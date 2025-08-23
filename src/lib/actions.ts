@@ -46,29 +46,39 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
 
     if (!response.ok) {
       const responseBody = await response.text();
-      console.error('Webhook response body for failed request:', responseBody);
+      console.error('Webhook response was not OK. Status:', response.status, 'Body:', responseBody);
       throw new Error(`Webhook failed with status: ${response.status}`);
     }
     
     const responseText = await response.text();
+    console.log('Raw webhook response text:', responseText);
 
     if (!responseText) {
-        console.log('Webhook returned an empty response.');
+        console.log('Webhook returned an empty response body.');
         return null;
     }
+    
+    try {
+      const responseData = JSON.parse(responseText);
+      console.log('Parsed webhook response data:', responseData);
 
-    console.log('Message successfully sent to webhook and received response.');
-
-    const responseData = JSON.parse(responseText);
-
-    if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
-      return responseData[0].output;
+      if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
+        console.log('Successfully extracted output from webhook response.');
+        return responseData[0].output;
+      } else {
+        console.warn('Webhook response format was not as expected. Data:', responseData);
+      }
+    } catch (e) {
+      console.error('Failed to parse webhook JSON response. Error:', e, 'Raw Response:', responseText);
+      // If parsing fails, but we got text, maybe the text itself is the response.
+      // Let's return it directly.
+      return responseText;
     }
 
     return null;
 
   } catch (error) {
-    console.error('Error sending message to webhook or processing response:', error);
+    console.error('Error in sendToWebhook function:', error);
     // We don't rethrow the error to not fail the client-side operation, 
     // but we return null so the app doesn't hang.
     return null;
