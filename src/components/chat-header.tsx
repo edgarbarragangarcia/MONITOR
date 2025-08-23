@@ -16,7 +16,7 @@ export function ChatHeader({ onSummarize, summary, isSummarizing }: ChatHeaderPr
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
            <div className="w-3 h-3 bg-accent rounded-full animate-pulse"></div>
-          <h1 className="text-xl font-bold text-primary">WebbyTalk</h1>
+          <h1 className="text-xl font-bold text-primary">INGENES CHAT ENTRENAMIENTO AGENTES</h1>
         </div>
         <Button onClick={onSummarize} disabled={isSummarizing} size="sm">
           {isSummarizing ? (
