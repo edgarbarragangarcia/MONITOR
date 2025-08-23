@@ -18,6 +18,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) {
+      return [];
+    }
+    return [
+      {
+        source: '/api/webhook',
+        destination: webhookUrl,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

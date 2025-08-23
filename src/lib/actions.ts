@@ -35,9 +35,13 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
     console.log('You can get a test URL from https://webhook.site/');
     return;
   }
+  
+  // The request is proxied through the Next.js server, so we use a relative path.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const proxiedWebhookUrl = `${appUrl}/api/webhook`;
 
   try {
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(proxiedWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -46,10 +50,12 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
     });
 
     if (!response.ok) {
+      const responseBody = await response.text();
+      console.error('Webhook response body:', responseBody);
       throw new Error(`Webhook failed with status: ${response.status}`);
     }
 
-    console.log('Message successfully sent to webhook.');
+    console.log('Message successfully sent to webhook via proxy.');
   } catch (error) {
     console.error('Error sending message to webhook:', error);
     // We don't rethrow the error to not fail the client-side operation
