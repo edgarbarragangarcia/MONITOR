@@ -47,7 +47,6 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
     if (!response.ok) {
       const responseBody = await response.text();
       console.error('Webhook response was not OK. Status:', response.status, 'Body:', responseBody);
-      // Return an error message to be displayed in the chat
       return `Error from webhook: ${response.status} ${response.statusText}`;
     }
     
@@ -56,24 +55,29 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
 
     if (!responseText) {
         console.log('Webhook returned an empty response body.');
-        return null; // Don't display anything if the response is empty
+        return null;
     }
     
-    // Try to parse as JSON, but fall back to raw text if it fails
     try {
       const responseData = JSON.parse(responseText);
       
-      // Check if it's an array with at least one element which is an object and has an 'output' property
+      // The user webhook returns an array: [{ "output": "..." }]
       if (Array.isArray(responseData) && responseData.length > 0 && typeof responseData[0] === 'object' && responseData[0] !== null && 'output' in responseData[0]) {
-        console.log('Successfully extracted output from webhook JSON response.');
+        console.log('Successfully extracted output from webhook JSON array response.');
         return responseData[0].output;
-      } else {
-        console.warn('Webhook response was valid JSON but not in the expected format. Using raw text.', responseData);
-        return responseText;
       }
+
+      // The user webhook might also return a single object: { "output": "..." }
+      if (typeof responseData === 'object' && responseData !== null && 'output' in responseData) {
+        console.log('Successfully extracted output from webhook JSON object response.');
+        return responseData.output;
+      }
+      
+      console.warn('Webhook response was valid JSON but not in the expected format. Using raw text.', responseData);
+      return responseText;
+
     } catch (e) {
       console.log('Failed to parse webhook JSON response, using raw text instead. Error:', e);
-      // If parsing fails, the response is likely just plain text.
       return responseText;
     }
 
