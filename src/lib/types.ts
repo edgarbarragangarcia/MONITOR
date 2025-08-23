@@ -9,4 +9,5 @@ export type Message = {
   timestamp: Date;
   sentiment: Sentiment;
   isAnalyzing: boolean;
+  author: 'user' | 'bot';
 };

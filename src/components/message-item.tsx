@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { Clock, Frown, Meh, Smile, Webhook, Loader2 } from 'lucide-react';
+import { Clock, Frown, Meh, Smile, Bot, User, Loader2 } from 'lucide-react';
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -41,15 +41,19 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const sentimentInfo = getSentimentInfo();
   const sentimentClass = sentimentInfo && !message.isAnalyzing && message.sentiment ? sentimentStyles[message.sentiment.sentiment.toLowerCase() as keyof typeof sentimentStyles] : sentimentStyles.neutral;
+  const isUser = message.author === 'user';
+  const AuthorIcon = isUser ? User : Bot;
 
   return (
-    <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <Avatar className="h-8 w-8 border">
-        <AvatarFallback className="bg-background">
-          <Webhook className="h-4 w-4 text-muted-foreground" />
-        </AvatarFallback>
-      </Avatar>
-      <div className={cn("flex-1 space-y-1 rounded-lg border px-3 py-2", sentimentClass)}>
+    <div className={cn("flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300", isUser ? "justify-end" : "")}>
+      {!isUser && (
+        <Avatar className="h-8 w-8 border">
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              <AuthorIcon className="h-4 w-4" />
+            </AvatarFallback>
+        </Avatar>
+      )}
+      <div className={cn("flex-1 space-y-1 rounded-lg border px-3 py-2 max-w-[85%]", isUser ? "bg-primary/10" : "bg-background", sentimentClass)}>
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
         <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
           <div className="flex items-center gap-1">
@@ -64,6 +68,13 @@ export function MessageItem({ message }: MessageItemProps) {
           )}
         </div>
       </div>
+       {isUser && (
+        <Avatar className="h-8 w-8 border">
+            <AvatarFallback className="bg-background">
+              <AuthorIcon className="h-4 w-4 text-muted-foreground" />
+            </AvatarFallback>
+        </Avatar>
+      )}
     </div>
   );
 }

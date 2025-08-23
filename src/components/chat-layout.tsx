@@ -23,31 +23,26 @@ export function ChatLayout() {
   const addMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
 
-    const newMessage: Message = {
-      id: `${Date.now()}-${Math.random()}`,
+    const userMessage: Message = {
+      id: `${Date.now()}-user`,
       text,
       timestamp: new Date(),
       sentiment: null,
       isAnalyzing: true,
+      author: 'user',
     };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => [...prev, userMessage]);
 
-    // Send to webhook without awaiting
-    sendToWebhook({
-      id: newMessage.id,
-      text: newMessage.text,
-      timestamp: newMessage.timestamp,
-    });
-
+    // Get sentiment for user message
     try {
       const sentiment = await getSentiment(text);
       setMessages(prev => 
-        prev.map(m => m.id === newMessage.id ? { ...m, sentiment, isAnalyzing: false } : m)
+        prev.map(m => m.id === userMessage.id ? { ...m, sentiment, isAnalyzing: false } : m)
       );
     } catch (error) {
       console.error(error);
       setMessages(prev => 
-        prev.map(m => m.id === newMessage.id ? { ...m, isAnalyzing: false } : m)
+        prev.map(m => m.id === userMessage.id ? { ...m, isAnalyzing: false } : m)
       );
       toast({
         variant: "destructive",
@@ -55,12 +50,40 @@ export function ChatLayout() {
         description: "Failed to analyze message sentiment.",
       });
     }
+
+    // Send to webhook and get response
+    try {
+      const webhookResponse = await sendToWebhook({
+        id: userMessage.id,
+        text: userMessage.text,
+        timestamp: userMessage.timestamp,
+      });
+
+      if (webhookResponse) {
+        const botMessage: Message = {
+          id: `${Date.now()}-bot`,
+          text: webhookResponse,
+          timestamp: new Date(),
+          sentiment: null,
+          isAnalyzing: false,
+          author: 'bot',
+        };
+        setMessages(prev => [...prev, botMessage]);
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to get response from the webhook.",
+      });
+    }
   }, [toast]);
 
   const handleSummarize = async () => {
     setIsSummarizing(true);
     setSummary(null);
-    const conversationHistory = messages.map(m => `User: ${m.text}`).join('\n');
+    const conversationHistory = messages.map(m => `${m.author === 'user' ? 'User' : 'Bot'}: ${m.text}`).join('\n');
     
     try {
       const result = await getSummary(conversationHistory);

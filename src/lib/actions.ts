@@ -27,12 +27,12 @@ export async function getSummary(conversationHistory: string): Promise<{ summary
   }
 }
 
-export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sentiment'>) {
+export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sentiment' | 'author'>): Promise<string | null> {
   const webhookUrl = process.env.WEBHOOK_URL;
 
   if (!webhookUrl) {
     console.log('Skipping webhook call. Set a valid WEBHOOK_URL in your .env file.');
-    return;
+    return null;
   }
 
   try {
@@ -51,8 +51,24 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
     }
 
     console.log('Message successfully sent to webhook.');
+    
+    // The webhook might return an empty body for certain requests.
+    const responseText = await response.text();
+    if (!responseText) {
+        return null;
+    }
+
+    const responseData = JSON.parse(responseText);
+
+    if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
+      return responseData[0].output;
+    }
+
+    return null;
+
   } catch (error) {
-    console.error('Error sending message to webhook:', error);
+    console.error('Error sending message to webhook or processing response:', error);
     // We don't rethrow the error to not fail the client-side operation
+    return null;
   }
 }
