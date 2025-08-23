@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Message } from '@/lib/types';
-import { getSentiment, getSummary } from '@/lib/actions';
+import { getSentiment, getSummary, sendToWebhook } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { ChatHeader } from './chat-header';
@@ -31,6 +31,13 @@ export function ChatLayout() {
       isAnalyzing: true,
     };
     setMessages(prev => [...prev, newMessage]);
+
+    // Send to webhook without awaiting
+    sendToWebhook({
+      id: newMessage.id,
+      text: newMessage.text,
+      timestamp: newMessage.timestamp,
+    });
 
     try {
       const sentiment = await getSentiment(text);
