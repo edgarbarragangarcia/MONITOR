@@ -46,17 +46,18 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
 
     if (!response.ok) {
       const responseBody = await response.text();
-      console.error('Webhook response body:', responseBody);
+      console.error('Webhook response body for failed request:', responseBody);
       throw new Error(`Webhook failed with status: ${response.status}`);
     }
-
-    console.log('Message successfully sent to webhook.');
     
-    // The webhook might return an empty body for certain requests.
     const responseText = await response.text();
+
     if (!responseText) {
+        console.log('Webhook returned an empty response.');
         return null;
     }
+
+    console.log('Message successfully sent to webhook and received response.');
 
     const responseData = JSON.parse(responseText);
 
@@ -68,7 +69,8 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
 
   } catch (error) {
     console.error('Error sending message to webhook or processing response:', error);
-    // We don't rethrow the error to not fail the client-side operation
+    // We don't rethrow the error to not fail the client-side operation, 
+    // but we return null so the app doesn't hang.
     return null;
   }
 }
