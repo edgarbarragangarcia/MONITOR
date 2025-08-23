@@ -30,9 +30,8 @@ export async function getSummary(conversationHistory: string): Promise<{ summary
 export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sentiment'>) {
   const webhookUrl = process.env.WEBHOOK_URL;
 
-  if (!webhookUrl || !webhookUrl.startsWith('https://webhook.site/')) {
+  if (!webhookUrl) {
     console.log('Skipping webhook call. Set a valid WEBHOOK_URL in your .env file.');
-    console.log('You can get a test URL from https://webhook.site/');
     return;
   }
   
