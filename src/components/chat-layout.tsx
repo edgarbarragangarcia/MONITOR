@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Message } from '@/lib/types';
-import { getSentiment, getSummary, sendToWebhook } from '@/lib/actions';
+import { getSentiment, sendToWebhook } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { ChatHeader } from './chat-header';
@@ -11,8 +11,7 @@ import { ChatInput } from './chat-input';
 
 export function ChatLayout() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
 
@@ -80,31 +79,41 @@ export function ChatLayout() {
     }
   }, [toast]);
 
-  const handleSummarize = async () => {
-    setIsSummarizing(true);
-    setSummary(null);
-    const conversationHistory = messages.map(m => `${m.author === 'user' ? 'User' : 'Bot'}: ${m.text}`).join('\n');
-    
+  const handleDownload = () => {
+    if (!isClient) return;
+
+    setIsDownloading(true);
     try {
-      const result = await getSummary(conversationHistory);
-      setSummary(result.summary);
+      const conversationText = messages
+        .map(m => `[${m.timestamp.toLocaleString()}] ${m.author === 'user' ? 'User' : 'Bot'}: ${m.text}`)
+        .join('\n\n');
+      
+      const blob = new Blob([conversationText], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'conversation.doc';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error) {
-      toast({
+       toast({
         variant: "destructive",
-        title: "Summarization Failed",
-        description: (error as Error).message,
+        title: "Download Failed",
+        description: "Could not prepare the conversation for download.",
       });
     } finally {
-      setIsSummarizing(false);
+      setIsDownloading(false);
     }
   };
+
 
   return (
     <Card className="w-full max-w-2xl h-[70vh] flex flex-col shadow-2xl rounded-2xl">
       <ChatHeader 
-        onSummarize={handleSummarize} 
-        summary={summary} 
-        isSummarizing={isSummarizing}
+        onDownload={handleDownload} 
+        isDownloading={isDownloading}
       />
       <MessageList messages={messages} />
       <ChatInput onSendMessage={addMessage} />
