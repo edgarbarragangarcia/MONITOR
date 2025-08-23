@@ -32,7 +32,7 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
 
   if (!webhookUrl) {
     console.log('Skipping webhook call. Set a valid WEBHOOK_URL in your .env file.');
-    return null;
+    return "The webhook is not configured. Please set the WEBHOOK_URL environment variable.";
   }
 
   try {
@@ -47,7 +47,8 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
     if (!response.ok) {
       const responseBody = await response.text();
       console.error('Webhook response was not OK. Status:', response.status, 'Body:', responseBody);
-      throw new Error(`Webhook failed with status: ${response.status}`);
+      // Return an error message to be displayed in the chat
+      return `Error from webhook: ${response.status} ${response.statusText}`;
     }
     
     const responseText = await response.text();
@@ -55,32 +56,32 @@ export async function sendToWebhook(message: Omit<Message, 'isAnalyzing' | 'sent
 
     if (!responseText) {
         console.log('Webhook returned an empty response body.');
-        return null;
+        return null; // Don't display anything if the response is empty
     }
     
+    // Try to parse as JSON, but fall back to raw text if it fails
     try {
       const responseData = JSON.parse(responseText);
-      console.log('Parsed webhook response data:', responseData);
-
-      if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].output) {
-        console.log('Successfully extracted output from webhook response.');
+      
+      // Check if it's an array with at least one element which is an object and has an 'output' property
+      if (Array.isArray(responseData) && responseData.length > 0 && typeof responseData[0] === 'object' && responseData[0] !== null && 'output' in responseData[0]) {
+        console.log('Successfully extracted output from webhook JSON response.');
         return responseData[0].output;
       } else {
-        console.warn('Webhook response format was not as expected. Data:', responseData);
+        console.warn('Webhook response was valid JSON but not in the expected format. Using raw text.', responseData);
+        return responseText;
       }
     } catch (e) {
-      console.error('Failed to parse webhook JSON response. Error:', e, 'Raw Response:', responseText);
-      // If parsing fails, but we got text, maybe the text itself is the response.
-      // Let's return it directly.
+      console.log('Failed to parse webhook JSON response, using raw text instead. Error:', e);
+      // If parsing fails, the response is likely just plain text.
       return responseText;
     }
 
-    return null;
-
   } catch (error) {
     console.error('Error in sendToWebhook function:', error);
-    // We don't rethrow the error to not fail the client-side operation, 
-    // but we return null so the app doesn't hang.
-    return null;
+    if (error instanceof Error) {
+        return `Failed to send to webhook: ${error.message}`;
+    }
+    return "An unknown error occurred while contacting the webhook.";
   }
 }
