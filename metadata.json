@@ -1,0 +1,5 @@
+{
+  "name": "WA Monitor AI",
+  "description": "Monitor de conversaciones de WhatsApp en tiempo real basado en Google Sheets, con análisis de Gemini.",
+  "requestFramePermissions": []
+}
