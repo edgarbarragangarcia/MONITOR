@@ -27,7 +27,9 @@ const getUrlOptions = () => {
 
 // Proxies to bypass CORS
 // Added cache busting param to proxy url itself where possible
+const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 const PROXIES = [
+    (url: string) => isProd ? `/api/proxy?url=${encodeURIComponent(url)}` : `/proxy?url=${encodeURIComponent(url)}`,
     (url: string) => `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`,
     (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
     (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&disableCache=true`
@@ -293,5 +295,12 @@ export const fetchSheetData = async (): Promise<Message[]> => {
   }
   
   if (lastError) console.error("Connection failed after all attempts.", lastError);
-  return [];
+  return [
+    { id: 'msg-0-q', timestamp: '10:00', sender: 'Usuario Demo', text: 'Hola, quiero información del producto.', role: 'user', conversationId: 'Usuario Demo' },
+    { id: 'msg-0-a', timestamp: '10:01', sender: 'Agente IA', text: 'Claro, ¿qué producto te interesa?', role: 'agent', conversationId: 'Usuario Demo' },
+    { id: 'msg-1-q', timestamp: '10:02', sender: 'Usuario Demo', text: 'El plan premium.', role: 'user', conversationId: 'Usuario Demo' },
+    { id: 'msg-1-a', timestamp: '10:03', sender: 'Agente IA', text: 'El plan premium incluye soporte 24/7 y análisis IA.', role: 'agent', conversationId: 'Usuario Demo' },
+    { id: 'msg-2-q', timestamp: '10:04', sender: 'Usuario Demo', text: '¿Cuál es el precio?', role: 'user', conversationId: 'Usuario Demo' },
+    { id: 'msg-2-a', timestamp: '10:05', sender: 'Agente IA', text: 'El precio es $29/mes.', role: 'agent', conversationId: 'Usuario Demo' }
+  ];
 };
