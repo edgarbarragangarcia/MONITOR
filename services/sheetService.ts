@@ -28,8 +28,9 @@ const getUrlOptions = () => {
 // Proxies to bypass CORS
 // Added cache busting param to proxy url itself where possible
 const PROXIES = [
-    (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&disableCache=true`,
-    (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`
+    (url: string) => `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`,
+    (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&disableCache=true`
 ];
 
 // Helper to parse CSV text
@@ -248,7 +249,7 @@ export const fetchSheetData = async (): Promise<Message[]> => {
             
             // Abort controller for timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout per try
+            const timeoutId = setTimeout(() => controller.abort(), 7000);
 
             const response = await fetch(fullUrl, { 
                 cache: 'no-store',
@@ -260,7 +261,6 @@ export const fetchSheetData = async (): Promise<Message[]> => {
             if (!response.ok) continue;
             
             let text = '';
-            // Handle AllOrigins JSON wrapper
             if (fullUrl.includes('allorigins')) {
                 const json = await response.json();
                 text = json.contents;
