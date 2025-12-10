@@ -75,68 +75,42 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         return () => clearInterval(interval);
     }, []);
 
-    // Analyze topics from questions to find most frequent themes
+    // Analyze topics from questions to find most frequent full questions
     const analyzeTopics = (data: SheetRow[]): { topic: string; count: number }[] => {
-        const stopWords = new Set([
-            'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se', 'no', 'haber', 'por', 'con',
-            'su', 'para', 'como', 'estar', 'tener', 'le', 'lo', 'todo', 'pero', 'más', 'hacer',
-            'o', 'poder', 'decir', 'este', 'ir', 'otro', 'ese', 'la', 'si', 'me', 'ya', 'ver',
-            'porque', 'dar', 'cuando', 'él', 'muy', 'sin', 'vez', 'mucho', 'saber', 'qué', 'sobre',
-            'mi', 'alguno', 'mismo', 'yo', 'también', 'hasta', 'año', 'dos', 'querer', 'entre',
-            'así', 'primero', 'desde', 'grande', 'eso', 'ni', 'nos', 'llegar', 'pasar', 'tiempo',
-            'ella', 'sí', 'día', 'uno', 'bien', 'poco', 'deber', 'entonces', 'poner', 'cosa',
-            'tanto', 'hombre', 'parecer', 'nuestro', 'tan', 'donde', 'ahora', 'parte', 'después',
-            'vida', 'quedar', 'siempre', 'creer', 'hablar', 'llevar', 'dejar', 'nada', 'cada',
-            'seguir', 'menos', 'nuevo', 'encontrar', 'algo', 'solo', 'decir', 'llamar', 'venir',
-            'pensar', 'salir', 'volver', 'tomar', 'conocer', 'vivir', 'sentir', 'tratar', 'mirar',
-            'contar', 'empezar', 'esperar', 'buscar', 'existir', 'entrar', 'trabajar', 'escribir',
-            'perder', 'producir', 'ocurrir', 'entender', 'pedir', 'recibir', 'recordar', 'terminar',
-            'permitir', 'aparecer', 'conseguir', 'comenzar', 'servir', 'sacar', 'necesitar', 'mantener',
-            'resultar', 'leer', 'caer', 'cambiar', 'presentar', 'crear', 'abrir', 'considerar',
-            'oír', 'acabar', 'cual', 'puedo', 'puede', 'quiero', 'tengo', 'tiene', 'estoy', 'está',
-            'son', 'eres', 'es', 'he', 'ha', 'han', 'del', 'una', 'los', 'las', 'unos', 'unas',
-            'al', 'por', 'hola', 'buenos', 'días', 'tardes', 'noches', 'favor', 'gracias', 'saludos',
-            'puedes', 'llamo', 'información', 'informacion', 'como', 'cómo', 'quisiera', 'necesito',
-            'pudiera', 'queria', 'quería', 'podria', 'podría', 'donde', 'dónde', 'cuando', 'cuándo'
-        ]);
+        const questionCount: { [question: string]: number } = {};
+        const originalQuestions: { [key: string]: string } = {};
 
-        const topicCount: { [topic: string]: number } = {};
-
-        // Extract words and bigrams from all questions
         data.forEach(row => {
-            const question = row.pregunta.toLowerCase();
-            // Remove punctuation and clean strings
-            const cleanQuestion = question.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, '');
-            const words = cleanQuestion.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+            const rawQuestion = row.pregunta.trim();
+            if (!rawQuestion || rawQuestion.length < 5) return;
 
-            // Count single relevant words
-            words.forEach(word => {
-                topicCount[word] = (topicCount[word] || 0) + 1;
-            });
+            // Normalize slightly to group similar questions (lowercase, remove extra spaces)
+            // But keep enough context to be readable
+            const normalized = rawQuestion.toLowerCase()
+                .replace(/[¿?¡!.,]/g, '') // Remove punctuation
+                .replace(/\s+/g, ' ') // Collapse spaces
+                .trim();
 
-            // Count bigrams (2-word phrases) for better context
-            for (let i = 0; i < words.length - 1; i++) {
-                const bigram = `${words[i]} ${words[i + 1]}`;
-                // Give more weight to bigrams if they appear
-                topicCount[bigram] = (topicCount[bigram] || 0) + 2;
+            // Skip greetings only (too generic)
+            if (['hola', 'buenos dias', 'buenas tardes', 'gracias'].includes(normalized)) return;
+
+            if (questionCount[normalized]) {
+                questionCount[normalized]++;
+            } else {
+                questionCount[normalized] = 1;
+                // Store the original formatting of the first occurrence for display
+                originalQuestions[normalized] = rawQuestion;
             }
         });
 
-        // Convert to array, prioritize longer phrases if counts are similar
-        const sortedTopics = Object.entries(topicCount)
-            .map(([topic, count]) => ({ topic, count }))
-            // Filter out low frequency items to avoid noise
-            .filter(item => item.count > 2)
-            .sort((a, b) => {
-                if (b.count === a.count) {
-                    // If counts are equal, prefer the longer phrase (more context)
-                    return b.topic.length - a.topic.length;
-                }
-                return b.count - a.count;
-            })
-            .slice(0, 5); // Top 5 topics
-
-        return sortedTopics;
+        // Convert to array and sort by frequency
+        return Object.entries(questionCount)
+            .map(([key, count]) => ({
+                topic: originalQuestions[key] || key,
+                count
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5); // Top 5 repeated questions
     };
 
     const loadSheetData = async () => {
