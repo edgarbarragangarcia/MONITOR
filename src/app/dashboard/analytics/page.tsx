@@ -214,12 +214,79 @@ export default function AnalyticsPage() {
                 </Card>
             </div>
 
-            {/* Charts Row 2 - Commented out until real data analysis is implemented */}
-            {/* 
+            {/* Charts Row 2 - Most Frequent Topics */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8">
-                ... content commented ...
+                {/* Top Topics */}
+                <Card className="p-6 border-slate-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-semibold text-slate-900">Temas Más Frecuentes</h3>
+                    </div>
+                    {metrics.topTopics.length > 0 ? (
+                        <div className="space-y-4">
+                            {metrics.topTopics.map((topic, idx) => {
+                                const maxCount = metrics.topTopics[0]?.count || 1;
+                                const percentage = (topic.count / maxCount) * 100;
+
+                                return (
+                                    <div key={idx} className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm font-medium text-slate-700 capitalize">
+                                                {topic.topic}
+                                            </span>
+                                            <span className="text-sm text-slate-500">
+                                                {topic.count} menciones
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2.5">
+                                            <div
+                                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-500"
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center h-[200px] text-slate-400">
+                            Analizando temas...
+                        </div>
+                    )}
+                </Card>
+
+                {/* Topic Distribution Chart */}
+                <Card className="p-6 border-slate-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-semibold text-slate-900">Distribución de Temas</h3>
+                    </div>
+                    <div className="h-[300px] w-full">
+                        {metrics.topTopics.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={metrics.topTopics} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="topic"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                        width={100}
+                                    />
+                                    <RechartsTooltip
+                                        contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="count" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400">
+                                Cargando distribución de temas...
+                            </div>
+                        )}
+                    </div>
+                </Card>
             </div>
-            */}
         </div>
     );
 }

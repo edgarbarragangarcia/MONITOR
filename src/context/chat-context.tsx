@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import type { Message, Sentiment } from '@/lib/types';
 import { getSentiment, sendToWebhook } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-import { USERS, USER_CONVERSATIONS } from '@/lib/data';
 
 interface SheetRow {
     pregunta: string;
@@ -38,6 +37,7 @@ interface ChatContextType {
         avgResponseTime: number;
         sentimentDistribution: { positive: number; neutral: number; negative: number };
         messagesByHour: { [hour: string]: number };
+        topTopics: { topic: string; count: number }[];
     };
 }
 
@@ -59,7 +59,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         activeUsers: 0,
         avgResponseTime: 45,
         sentimentDistribution: { positive: 65, neutral: 25, negative: 10 },
-        messagesByHour: {} as { [hour: string]: number }
+        messagesByHour: {} as { [hour: string]: number },
+        topTopics: [] as { topic: string; count: number }[]
     });
 
     // Load data from Google Sheets on mount
@@ -73,6 +74,55 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         return () => clearInterval(interval);
     }, []);
+
+    // Analyze topics from questions to find most frequent themes
+    const analyzeTopics = (data: SheetRow[]): { topic: string; count: number }[] => {
+        const stopWords = new Set([
+            'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se', 'no', 'haber', 'por', 'con',
+            'su', 'para', 'como', 'estar', 'tener', 'le', 'lo', 'todo', 'pero', 'más', 'hacer',
+            'o', 'poder', 'decir', 'este', 'ir', 'otro', 'ese', 'la', 'si', 'me', 'ya', 'ver',
+            'porque', 'dar', 'cuando', 'él', 'muy', 'sin', 'vez', 'mucho', 'saber', 'qué', 'sobre',
+            'mi', 'alguno', 'mismo', 'yo', 'también', 'hasta', 'año', 'dos', 'querer', 'entre',
+            'así', 'primero', 'desde', 'grande', 'eso', 'ni', 'nos', 'llegar', 'pasar', 'tiempo',
+            'ella', 'sí', 'día', 'uno', 'bien', 'poco', 'deber', 'entonces', 'poner', 'cosa',
+            'tanto', 'hombre', 'parecer', 'nuestro', 'tan', 'donde', 'ahora', 'parte', 'después',
+            'vida', 'quedar', 'siempre', 'creer', 'hablar', 'llevar', 'dejar', 'nada', 'cada',
+            'seguir', 'menos', 'nuevo', 'encontrar', 'algo', 'solo', 'decir', 'llamar', 'venir',
+            'pensar', 'salir', 'volver', 'tomar', 'conocer', 'vivir', 'sentir', 'tratar', 'mirar',
+            'contar', 'empezar', 'esperar', 'buscar', 'existir', 'entrar', 'trabajar', 'escribir',
+            'perder', 'producir', 'ocurrir', 'entender', 'pedir', 'recibir', 'recordar', 'terminar',
+            'permitir', 'aparecer', 'conseguir', 'comenzar', 'servir', 'sacar', 'necesitar', 'mantener',
+            'resultar', 'leer', 'caer', 'cambiar', 'presentar', 'crear', 'abrir', 'considerar',
+            'oír', 'acabar', 'cual', 'puedo', 'puede', 'quiero', 'tengo', 'tiene', 'estoy', 'está',
+            'son', 'eres', 'es', 'he', 'ha', 'han', 'del', 'una', 'los', 'las', 'unos', 'unas',
+            'al', 'por', 'hola', 'buenos', 'días', 'tardes', 'noches', 'favor', 'gracias', 'saludos'
+        ]);
+
+        const wordCount: { [word: string]: number } = {};
+
+        // Extract words from all questions
+        data.forEach(row => {
+            const question = row.pregunta.toLowerCase();
+            // Remove punctuation and split into words
+            const words = question.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, '').split(/\s+/);
+
+            words.forEach(word => {
+                const cleanWord = word.trim();
+                // Count words that are not stopwords and have more than 3 characters
+                if (cleanWord.length > 3 && !stopWords.has(cleanWord)) {
+                    wordCount[cleanWord] = (wordCount[cleanWord] || 0) + 1;
+                }
+            });
+        });
+
+        // Convert to array and sort by frequency
+        const sortedTopics = Object.entries(wordCount)
+            .map(([topic, count]) => ({ topic, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5); // Top 5 topics
+
+        return sortedTopics;
+    };
 
     const loadSheetData = async () => {
         try {
@@ -91,16 +141,32 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setUsers(extractedUsers);
             setConversations(extractedConversations);
 
-            // Update metrics
+            // Calculate message volume by hour from all conversations
+            const messagesByHour: { [hour: string]: number } = {};
+            Object.values(extractedConversations).forEach(conversation => {
+                conversation.forEach(message => {
+                    const hour = message.timestamp.getHours().toString().padStart(2, '0') + ':00';
+                    messagesByHour[hour] = (messagesByHour[hour] || 0) + 1;
+                });
+            });
+
+            // Analyze most frequent topics from questions
+            const topTopics = analyzeTopics(data);
+
+            // Update metrics with real data
             const newMetrics = {
                 ...metrics,
                 totalChats: data.length,
                 activeUsers: extractedUsers.length,
+                messagesByHour: messagesByHour,
+                topTopics: topTopics
             };
 
             console.log('📊 Updated metrics:', {
                 totalChats: newMetrics.totalChats,
-                activeUsers: newMetrics.activeUsers
+                activeUsers: newMetrics.activeUsers,
+                hourlyMessages: Object.keys(messagesByHour).length,
+                topTopicsCount: topTopics.length
             });
 
             setMetrics(newMetrics);
@@ -224,13 +290,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
     }, [selectedUserId, conversations]);
 
-    // Calculate metrics whenever messages change
+    // Calculate sentiment distribution from all messages when they change
     useEffect(() => {
-        // Determine sentiment counts
-        let pos = 0, neu = 0, neg = 0;
+        if (messages.length === 0) return;
 
-        // In a real app we would iterate through all messages database. 
-        // Here we will just use the current session messages + some base stats
+        let pos = 0, neu = 0, neg = 0;
 
         messages.forEach(m => {
             if (m.sentiment) {
@@ -242,21 +306,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const totalSent = pos + neu + neg;
 
-        // Update hourly
-        const newHourly = { ...metrics.messagesByHour };
-        messages.forEach(m => {
-            const hour = m.timestamp.getHours().toString().padStart(2, '0') + ':00';
-            newHourly[hour] = (newHourly[hour] || 0) + 1;
-        });
+        // Only update sentiment if we have analyzed messages
+        if (totalSent > 0) {
+            const percentage = (val: number) => Math.round((val / totalSent) * 100);
 
-        setMetrics(prev => ({
-            ...prev,
-            totalChats: 272 + messages.length, // Base + new
-            activeUsers: USERS.length, // Keep consistent
-            messagesByHour: newHourly
-            // limiting re-calc of sentiment for now to avoid complexity in this demo
-        }));
-
+            setMetrics(prev => ({
+                ...prev,
+                sentimentDistribution: {
+                    positive: percentage(pos),
+                    neutral: percentage(neu),
+                    negative: percentage(neg)
+                }
+            }));
+        }
     }, [messages]);
 
     const selectUser = useCallback((userId: string) => {
