@@ -95,30 +95,45 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             'resultar', 'leer', 'caer', 'cambiar', 'presentar', 'crear', 'abrir', 'considerar',
             'oír', 'acabar', 'cual', 'puedo', 'puede', 'quiero', 'tengo', 'tiene', 'estoy', 'está',
             'son', 'eres', 'es', 'he', 'ha', 'han', 'del', 'una', 'los', 'las', 'unos', 'unas',
-            'al', 'por', 'hola', 'buenos', 'días', 'tardes', 'noches', 'favor', 'gracias', 'saludos'
+            'al', 'por', 'hola', 'buenos', 'días', 'tardes', 'noches', 'favor', 'gracias', 'saludos',
+            'puedes', 'llamo', 'información', 'informacion', 'como', 'cómo', 'quisiera', 'necesito',
+            'pudiera', 'queria', 'quería', 'podria', 'podría', 'donde', 'dónde', 'cuando', 'cuándo'
         ]);
 
-        const wordCount: { [word: string]: number } = {};
+        const topicCount: { [topic: string]: number } = {};
 
-        // Extract words from all questions
+        // Extract words and bigrams from all questions
         data.forEach(row => {
             const question = row.pregunta.toLowerCase();
-            // Remove punctuation and split into words
-            const words = question.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, '').split(/\s+/);
+            // Remove punctuation and clean strings
+            const cleanQuestion = question.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, '');
+            const words = cleanQuestion.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
 
+            // Count single relevant words
             words.forEach(word => {
-                const cleanWord = word.trim();
-                // Count words that are not stopwords and have more than 3 characters
-                if (cleanWord.length > 3 && !stopWords.has(cleanWord)) {
-                    wordCount[cleanWord] = (wordCount[cleanWord] || 0) + 1;
-                }
+                topicCount[word] = (topicCount[word] || 0) + 1;
             });
+
+            // Count bigrams (2-word phrases) for better context
+            for (let i = 0; i < words.length - 1; i++) {
+                const bigram = `${words[i]} ${words[i + 1]}`;
+                // Give more weight to bigrams if they appear
+                topicCount[bigram] = (topicCount[bigram] || 0) + 2;
+            }
         });
 
-        // Convert to array and sort by frequency
-        const sortedTopics = Object.entries(wordCount)
+        // Convert to array, prioritize longer phrases if counts are similar
+        const sortedTopics = Object.entries(topicCount)
             .map(([topic, count]) => ({ topic, count }))
-            .sort((a, b) => b.count - a.count)
+            // Filter out low frequency items to avoid noise
+            .filter(item => item.count > 2)
+            .sort((a, b) => {
+                if (b.count === a.count) {
+                    // If counts are equal, prefer the longer phrase (more context)
+                    return b.topic.length - a.topic.length;
+                }
+                return b.count - a.count;
+            })
             .slice(0, 5); // Top 5 topics
 
         return sortedTopics;
