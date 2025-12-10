@@ -76,12 +76,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const loadSheetData = async () => {
         try {
+            console.log('🔄 Loading sheet data...');
             const response = await fetch('/api/sheets');
             if (!response.ok) throw new Error('Failed to fetch sheet data');
 
             const result = await response.json();
             const data: SheetRow[] = result.data || [];
 
+            console.log(`📥 Received ${data.length} rows from Google Sheet`);
             setSheetData(data);
 
             // Transform data into users and conversations
@@ -90,11 +92,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setConversations(extractedConversations);
 
             // Update metrics
-            setMetrics(prev => ({
-                ...prev,
+            const newMetrics = {
+                ...metrics,
                 totalChats: data.length,
                 activeUsers: extractedUsers.length,
-            }));
+            };
+
+            console.log('📊 Updated metrics:', {
+                totalChats: newMetrics.totalChats,
+                activeUsers: newMetrics.activeUsers
+            });
+
+            setMetrics(newMetrics);
 
             // Auto-select first user if none selected
             if (!selectedUserId && extractedUsers.length > 0) {
@@ -103,7 +112,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
             setIsLoading(false);
         } catch (error) {
-            console.error('Error loading sheet data:', error);
+            console.error('❌ Error loading sheet data:', error);
             toast({
                 variant: "destructive",
                 title: "Error",
