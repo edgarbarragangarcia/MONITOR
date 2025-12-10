@@ -7,14 +7,23 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     try {
         const sheetId = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_ID;
+        const gid = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_GID;
+
+        console.log('🔍 Checking sheet config:', {
+            hasSheetId: !!sheetId,
+            sheetIdLength: sheetId?.length,
+            hasGid: !!gid,
+            gid: gid
+        });
 
         if (!sheetId) {
+            console.error('❌ Missing NEXT_PUBLIC_GOOGLE_SHEETS_ID environment variable');
             return NextResponse.json({ error: 'Missing sheet configuration' }, { status: 500 });
         }
 
         // Use the public CSV export method (simpler, no auth needed)
-        const gid = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_GID || '0';
-        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+        const finalGid = gid || '0';
+        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${finalGid}`;
 
         const response = await fetch(url, {
             cache: 'no-store',
