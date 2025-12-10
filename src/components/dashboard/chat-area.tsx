@@ -13,7 +13,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ className }: ChatAreaProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
-    const { messages, addMessage, isAnalyzing } = useChat();
+    const { messages, addMessage, isAnalyzing, selectedUserName } = useChat();
     const [inputText, setInputText] = useState('');
 
     useEffect(() => {
@@ -47,10 +47,10 @@ export function ChatArea({ className }: ChatAreaProps) {
             <div className="bg-white/90 backdrop-blur-sm border-b p-4 flex items-center justify-between z-10 shadow-sm">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 bg-emerald-600 text-white">
-                        <AvatarFallback>E</AvatarFallback>
+                        <AvatarFallback>{selectedUserName.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <h2 className="font-bold text-gray-800">Edgar Barragán G</h2>
+                        <h2 className="font-bold text-gray-800">{selectedUserName}</h2>
                         <div className="flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-xs text-muted-foreground font-medium">Monitoreando en vivo</span>
@@ -90,7 +90,7 @@ export function ChatArea({ className }: ChatAreaProps) {
                             )}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className={cn("text-xs font-bold", msg.author === 'bot' ? "text-blue-600" : "text-emerald-600")}>
-                                        {msg.author === 'bot' ? 'Agente IA' : 'Edgar Barragán G'}
+                                        {msg.author === 'bot' ? 'Agente IA' : selectedUserName}
                                     </span>
                                 </div>
                                 <div className={cn(
